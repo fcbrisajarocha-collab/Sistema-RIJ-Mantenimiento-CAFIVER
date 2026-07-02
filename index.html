@@ -294,7 +294,7 @@ td.c{text-align:center}
 
 /* Dashboard */
 .dash-2col{display:grid;grid-template-columns:3fr 2fr;gap:11px;margin-bottom:11px}
-.turn-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:11px}
+.turn-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
 .turn-card{background:#fff;border:1px solid var(--brd3);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;transition:all var(--trs);box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .turn-card:hover{border-color:var(--brd4);box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .turn-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -388,7 +388,7 @@ td.c{text-align:center}
 .month-table tr:last-child td{border-bottom:none}
 @media(max-width:760px){
   .g4,.g5{grid-template-columns:repeat(2,1fr)}
-  .g3,.turn-cards,.sv-cards{grid-template-columns:1fr}
+  .g3,.turn-cards,.sv-cards,.g4{grid-template-columns:1fr}
   .dash-2col{grid-template-columns:1fr}
   .shift-grid{grid-template-columns:1fr}
   .pl-grid{grid-template-columns:1fr}
@@ -2238,11 +2238,11 @@ function renderDashboard() {
 
   // Métricas globales
   let allMembers=[];
-  const turnData={1:{sess:null,members:[]},2:{sess:null,members:[]},3:{sess:null,members:[]}};
+  const turnData={1:{sess:null,members:[]},2:{sess:null,members:[]},3:{sess:null,members:[]},mix:{sess:null,members:[]}};
   todaySess.forEach(s=>{
     const members=s.team.map(m=>{const p=S.catalog.find(x=>x.id===m.catId);return p?{...m,person:p}:null;}).filter(Boolean);
     allMembers=allMembers.concat(members);
-    if(turnData[s.turno]){turnData[s.turno].sess=s;turnData[s.turno].members=turnData[s.turno].members.concat(members);}
+    const tk = String(s.turno); if(turnData[tk]){turnData[tk].sess=s;turnData[tk].members=turnData[tk].members.concat(members);}
   });
   const gm=calcMetrics(allMembers);
   const asistPct=gm.pct(gm.si);
@@ -2259,12 +2259,15 @@ function renderDashboard() {
       <div class="kpi-foot"><span class="kpi-badge" style="background:var(--na-bg);color:var(--na-fg)">${gm.pct(gm.no)}%</span></div></div>`;
 
   // Cards por turno
-  document.getElementById('dash-turns').innerHTML=[1,2,3].map(t=>{
+  document.getElementById('dash-turns').innerHTML=[1,2,3,'mix'].map(t=>{
     const td=turnData[t];
     const mx=calcMetrics(td.members);
     const has=td.sess!==null;
-    return `<div class="turn-card ${TURN_CLASS[t]}">
-      <div class="tc-lbl">${TURN_NAME[t]}${has?`<span class="badge b-blue">Activo</span>`:`<span style="font-size:10px;color:var(--tx4)">Sin registro</span>`}</div>
+    const turnLbl = t==='mix' ? 'Mixto / Admin' : TURN_NAME[t];
+    const turnCls = t==='mix' ? 'tmix' : TURN_CLASS[t];
+    const turnClr = t==='mix' ? '#15803d' : TURN_COLOR[t];
+    return `<div class="turn-card ${turnCls}" style="${t==='mix'?'border-top:3px solid #15803d':''}">
+      <div class="tc-lbl">${turnLbl}${has?`<span class="badge b-blue">Activo</span>`:`<span style="font-size:10px;color:var(--tx4)">Sin registro</span>`}</div>
       <div class="tc-big" style="color:${has?'var(--tx)':'var(--tx4)'}">${has?mx.t:'—'}</div>
       <div class="tc-sub">${has?`${mx.pct(mx.si)}% asistencia · ${mx.ret} retardo${mx.ret!==1?'s':''}`:'No hay datos'}</div>
       ${has?`<div class="tc-sv">Sup: ${td.sess.supervisor}${td.sess.area?' · '+td.sess.area:''}</div>`:''}
@@ -2272,10 +2275,12 @@ function renderDashboard() {
   }).join('');
 
   // Barras de cumplimiento
-  const bars=[1,2,3].map(t=>{
+  const bars=[1,2,3,'mix'].map(t=>{
     const td=turnData[t];const mx=calcMetrics(td.members);const p=td.sess?mx.pct(mx.si):0;
-    return `<div class="bar-row"><div class="bar-name">${TURN_SHORT[t]}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${TURN_COLOR[t]}"></div></div>
+    const lbl = t==='mix' ? 'MIX' : TURN_SHORT[t];
+    const clr = t==='mix' ? '#15803d' : TURN_COLOR[t];
+    return `<div class="bar-row"><div class="bar-name">${lbl}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${clr}"></div></div>
       <div class="bar-pct">${td.sess?p+'%':'—'}</div></div>`;
   });
   bars.push(`<div class="bar-row" style="margin-top:5px;border-top:1px solid var(--brd);padding-top:7px">
@@ -2533,7 +2538,7 @@ function buildIncPeriodSelector() {
 function _agregarIncidencias(periodKey) {
   // Recolecta TODAS las incidencias del periodo seleccionado
   const dataByType = { falta:0, retardo:0, permiso:0, incap:0, castigo:0 };
-  const dataByTurn = { 1:{falta:0,retardo:0,permiso:0,incap:0,castigo:0}, 2:{falta:0,retardo:0,permiso:0,incap:0,castigo:0}, 3:{falta:0,retardo:0,permiso:0,incap:0,castigo:0} };
+  const dataByTurn = { 1:{falta:0,retardo:0,permiso:0,incap:0,castigo:0}, 2:{falta:0,retardo:0,permiso:0,incap:0,castigo:0}, 3:{falta:0,retardo:0,permiso:0,incap:0,castigo:0}, mix:{falta:0,retardo:0,permiso:0,incap:0,castigo:0} };
   const byPerson = {}; // catId -> {name, puesto, falta, retardo, permiso, incap, total}
   // Para tendencia, agregamos series internas (cada periodo puede tener subdivisiones)
   // Semana → días, Mes → días, Año → meses
@@ -2550,7 +2555,7 @@ function _agregarIncidencias(periodKey) {
       const t = _isIncidencia(m.status);
       if (!t) return;
       dataByType[t]++;
-      if (dataByTurn[s.turno]) dataByTurn[s.turno][t]++;
+      const _tk = String(s.turno); if (dataByTurn[_tk]) dataByTurn[_tk][t]++;
       subBuckets[subKey][t]++;
       const cat = S.catalog.find(p => p.id === m.catId);
       if (!byPerson[m.catId]) byPerson[m.catId] = {
@@ -2646,10 +2651,10 @@ function renderIncidencias() {
   _incCharts.turn = new Chart(turnCanvas, {
     type:'bar',
     data:{
-      labels: ['Turno 1','Turno 2','Turno 3'],
+      labels: ['Turno 1','Turno 2','Turno 3','Mixto/Admin'],
       datasets: Object.keys(INC_TYPES).map(k => ({
         label: INC_TYPES[k].label,
-        data: [1,2,3].map(t => dataByTurn[t][k]),
+        data: [1,2,3,'mix'].map(t => dataByTurn[t][k]),
         backgroundColor: INC_TYPES[k].color,
       }))
     },
